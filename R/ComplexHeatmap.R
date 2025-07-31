@@ -175,7 +175,7 @@ plot_complex_heatmap <- function(infercnv_obj,
   obs_anno_df$Section <- str_remove(str_remove(rownames(obs_anno_df), "_[^_]*$"), "^[^_]*_")
 
   # Calculate the heatmaps plot heights
-  obs_plot_height = ncol(obs_expr) / ncol(expr) * 12
+  obs_plot_height = (ncol(obs_expr) / ncol(expr)) * 12
   ref_plot_height = (ncol(expr) - ncol(obs_expr)) / ncol(expr) * 12
   if (ref_plot_height < 1.2) {
     ref_plot_height = 1.2
@@ -396,7 +396,7 @@ plot_complex_heatmap <- function(infercnv_obj,
     row_title_rot = 90,
     row_title_gp = gpar(fontsize = 18, fontface = "bold", lineheight = 3),
     row_dend_width = unit(8, "cm"),
-    height = unit(obs_plot_height, "cm"),
+    height = unit(obs_plot_height, "inch"),
     use_raster = TRUE,
     raster_device = "agg_png",
     raster_quality = 6,
