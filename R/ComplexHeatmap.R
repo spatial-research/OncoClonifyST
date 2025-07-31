@@ -1,6 +1,3 @@
-# To Do List:
-# - change coloring variable names to match options
-
 #' Plot Complex Heatmap for inferCNV Output
 #'
 #' This function generates a heatmap using the ComplexHeatmap package to visualize inferCNV results,
@@ -12,7 +9,7 @@
 #' @param output_dir Directory where the output heatmap PDF will be saved.
 #' @param heatmap_thresholds_file Path to the inferCNV-generated `heatmap_thresholds.txt` file.
 #' @param dendrogram_file A Newick file for dendrogram, can be either a single tree (`phylo`) or multiple trees (`multiPhylo`).
-#' @param obs_class Character string indicating how observations are grouped. Example `"Clone"`, `"Histology"`.
+#' @param obs_class Character string indicating how observations are annotated. Example `"Clone"`, `"Histology"`.
 #' @param annotation_name Character string indicating what additional annotation is desired. Example `"Histology"`.
 #' @param annotation_df A data frame or path to a TSV file with additional annotation information (annotation should be in the first column). Required if annotation_type is used.
 #' @param output_format File format for the saved heatmap: `"png"` (default) or `"pdf"`.
@@ -20,14 +17,16 @@
 #' @param class_cols Optional. Named list or vector of colors for classes groups within object. Format: `c("A" = "#hex", ...)`.
 #' @param anno_cols Optional. Named list or vector of colors for additional annotation groups. Format: `c("A" = "#hex", ...)`.
 #' @param ref_pie_chart Optional. Adds a section distribution pie chart of the reference
+#' @param sample_order Optional. If a specific sample or section order is desired in the legend.
 #'
 #' @return A image or pdf file is saved to `output_dir`, visualizing CNV patterns across references and observations with dendrograms and annotations.
 #'
 #' @details
 #' - For `dendrogram_file`, a single tree (`phylo`) will apply a global dendrogram, while a multiple tree (`multiPhylo`) input will order spots by original grouping.
 #' - The function will auto-detect and adjust for reference presence.
-#' - Colors for sample, histology, and clone groups are automatic but can be overridden.
+#' - Colors are automatic assigned but can be overridden for class and anno.
 #' - Chromosome and CNV coloring is derived from inferCNV settings and thresholds.
+#' - Reference and query heatmap size will scale to relative sizes but has an lower and upper limit of 10% and 25%.
 #'
 #' @examples
 #' plot_complex_heatmap(
@@ -54,7 +53,8 @@ plot_complex_heatmap <- function(infercnv_obj,
                                  output_name = "complex_heatmap.png",
                                  class_cols = NULL,
                                  anno_cols = NULL,
-                                 ref_pie_chart = FALSE) {
+                                 ref_pie_chart = FALSE,
+                                 sample_order = NULL) {
 
   library(ComplexHeatmap)
   library(tidyverse)
@@ -75,6 +75,12 @@ plot_complex_heatmap <- function(infercnv_obj,
     stop("`output_format` must be either 'png' or 'pdf'.")
   }
 
+  if (is.character(infercnv_obj) && file.exists(infercnv_obj)) {
+    infercnv_obj <- readRDS(infercnv_obj)
+  } else if (!is(infercnv_obj, "infercnv")) {
+    stop("`infercnv_obj` must be either a file path or a loaded inferCNV object.")
+  }
+
   # Fetch expressions data
   expr <- infercnv_obj@expr.data
 
@@ -88,6 +94,27 @@ plot_complex_heatmap <- function(infercnv_obj,
   # Colors
   ## Sample
   unique_samples <- unique(str_remove(str_remove(colnames(expr), "_[^_]*$"), "^[^_]*_"))
+  if (!is.null(sample_order)) {
+
+    sample_equal_check <- function(v1, v2) {
+      if (length(v1) != length(v2)) {
+        return(FALSE)
+      }
+      all(sort(v1) == sort(v2))
+    }
+
+    if (!sample_equal_check(unique_samples, sample_order)) {
+      if (length(base::setdiff(unique_samples, sample_order)) != 0) {
+        stop("Supplied sample_order is missing the following sections: ", paste0(base::setdiff(unique_samples, sample_order), collapse=", "))
+      } else {
+        stop("Supplied sample_order does not have the same number of entries or has extra entries not in the data.")
+      }
+    }
+
+    unique_samples <- sample_order[sample_order %in% unique_samples]
+
+  }
+
   if (length(unique_samples) <= 9) {
     sample_colors <- setNames(RColorBrewer::brewer.pal(length(unique_samples), "Set3"), unique_samples)
   } else {
@@ -108,7 +135,7 @@ plot_complex_heatmap <- function(infercnv_obj,
 
   ## Clone
   # Extra colors "#CCCCCC", "#736F72", "#000000"
-  #clone_colors_full <- c("#CAF0F8", "#80FFDB", "#00B4D8", "#01497C", "#155D27", "#29BF12", "#ABFF4F", "#FCF300", "#FF8000", "#E54C2E", "#D40000", "#780000", "#9B3F11", "#A24CCD", "#5A189A")
+  clone_colors_full <- c("#CAF0F8", "#80FFDB", "#00B4D8", "#01497C", "#155D27", "#29BF12", "#ABFF4F", "#FCF300", "#FF8000", "#E54C2E", "#D40000", "#780000", "#9B3F11", "#A24CCD", "#5A189A")
   clone_colors_default <- c("#CAF0F8", "#80FFDB", "#00B4D8", "#01497C", "#155D27", "#29BF12", "#ABFF4F", "#FCF300", "#FF8000", "#E54C2E")
   clone_x_colors_default <- c("#D40000", "#780000", "#9B3F11", "#A24CCD", "#5A189A")
 
@@ -150,6 +177,13 @@ plot_complex_heatmap <- function(infercnv_obj,
   # Calculate the heatmaps plot heights
   obs_plot_height = ncol(obs_expr) / ncol(expr) * 12
   ref_plot_height = (ncol(expr) - ncol(obs_expr)) / ncol(expr) * 12
+  if (ref_plot_height < 1.2) {
+    ref_plot_height = 1.2
+    obs_plot_height = 10.8
+  } else if (ref_plot_height > 3) {
+    ref_plot_height = 3
+    obs_plot_height = 9
+  }
 
   # Dendrogram
   tree <- read.tree(dendrogram_file)
@@ -216,16 +250,14 @@ plot_complex_heatmap <- function(infercnv_obj,
   if (is.null(annotation_name)) {
     obs_anno_df <- obs_anno_df %>% rename({{obs_class}} := class)
 
-    if (!is.null(class_cols)) {
-      hist_colors <- class_cols
-    } else {
-      hist_colors <- setNames(hist_colors_default,
-                              sort(unique(obs_anno_df[[obs_class]])))
-      hist_colors <- hist_colors[!is.na((names(hist_colors)))]
+    if (is.null(class_cols)) {
+      class_cols <- setNames(hist_colors_default,
+                             sort(unique(obs_anno_df[[obs_class]])))
+      class_cols <- class_cols[!is.na((names(class_cols)))]
     }
 
     anno_type <- c("Section", obs_class)
-    anno_col <- list(sample_colors, hist_colors)
+    anno_col <- list(sample_colors, class_cols)
     names(anno_col) <- anno_type
     anno_leg <- list(
       list(
@@ -258,17 +290,21 @@ plot_complex_heatmap <- function(infercnv_obj,
   } else {
     obs_anno_df <- obs_anno_df %>% rename({{obs_class}} := class)
 
-    if (!is.null(class_cols)) {
-      clone_colors <- class_cols
-    } else {
-      clone_levels <- sort(unique(obs_anno_df[[obs_class]]))
-      non_x_clones_levels <- clone_levels[!str_detect(clone_levels, "^X")]
-      non_x_clone_color_indices <- round(seq(1, length(clone_colors_default), length.out = length(non_x_clones_levels)))
-      non_x_clone_colors <- setNames(clone_colors_default[non_x_clone_color_indices], non_x_clones_levels)
-      x_clones_levels <- clone_levels[str_detect(clone_levels, "^X")]
-      x_clone_color_indices <- round(seq(1, length(clone_x_colors_default), length.out = length(x_clones_levels)))
-      x_clone_colors <- setNames(clone_x_colors_default[x_clone_color_indices], x_clones_levels)
-      clone_colors <- c(non_x_clone_colors, x_clone_colors)[clone_levels]
+    if (is.null(class_cols)) {
+      if (obs_class == "clone") {
+        clone_levels <- sort(unique(obs_anno_df[[obs_class]]))
+        non_x_clones_levels <- clone_levels[!str_detect(clone_levels, "^X")]
+        non_x_clone_color_indices <- round(seq(1, length(clone_colors_default), length.out = length(non_x_clones_levels)))
+        non_x_clone_colors <- setNames(clone_colors_default[non_x_clone_color_indices], non_x_clones_levels)
+        x_clones_levels <- clone_levels[str_detect(clone_levels, "^X")]
+        x_clone_color_indices <- round(seq(1, length(clone_x_colors_default), length.out = length(x_clones_levels)))
+        x_clone_colors <- setNames(clone_x_colors_default[x_clone_color_indices], x_clones_levels)
+        class_colors <- c(non_x_clone_colors, x_clone_colors)[clone_levels]
+      } else {
+        class_cols <- setNames(clone_colors_full,
+                               sort(unique(obs_anno_df[[obs_class]])))
+        class_cols <- class_cols[!is.na((names(class_cols)))]
+      }
     }
 
     if (is.character(annotation_df) && file.exists(annotation_df)) {
@@ -289,16 +325,14 @@ plot_complex_heatmap <- function(infercnv_obj,
 
     obs_anno_df[[annotation_name]] <- hist_anno[rownames(obs_anno_df), annotation_name]
 
-    if (!is.null(anno_cols)) {
-      hist_colors <- anno_cols
-    } else {
-      hist_colors <- setNames(hist_colors_default,
-                              sort(unique(obs_anno_df[[annotation_name]])))
-      hist_colors <- hist_colors[!is.na((names(hist_colors)))]
+    if (is.null(anno_cols)) {
+      anno_cols <- setNames(hist_colors_default,
+                            sort(unique(obs_anno_df[[annotation_name]])))
+      anno_cols <- anno_cols[!is.na((names(anno_cols)))]
     }
 
     anno_type <- c("Section", annotation_name, obs_class)
-    anno_col <- list(sample_colors, hist_colors, clone_colors)
+    anno_col <- list(sample_colors, anno_cols, class_cols)
     names(anno_col) <- anno_type
     anno_leg <- list(
       list(
@@ -357,12 +391,12 @@ plot_complex_heatmap <- function(infercnv_obj,
     bottom_annotation = bottom_anno,
     top_annotation = top_anno,
     left_annotation = obs_left_anno,
-    row_title = "Observations (Spots)",
+    row_title = paste0("Query Spots (N=", ncol(obs_expr), ")"),
     row_title_side = "right",
     row_title_rot = 90,
     row_title_gp = gpar(fontsize = 18, fontface = "bold", lineheight = 3),
-    row_dend_width = unit(obs_plot_height, "cm"),
-    height = unit(8, "inch"),
+    row_dend_width = unit(8, "cm"),
+    height = unit(obs_plot_height, "cm"),
     use_raster = TRUE,
     raster_device = "agg_png",
     raster_quality = 6,
@@ -498,7 +532,7 @@ plot_complex_heatmap <- function(infercnv_obj,
       column_gap = unit(0, "mm"),
       column_title = NULL,
       border = TRUE,
-      row_title = "References (Spots)",
+      row_title = paste0("Ref. Spots (N=", ncol(ref_expr), ")"),
       row_title_side = "right",
       row_title_rot = 90,
       row_title_gp = gpar(fontsize = 18, fontface = "bold", lineheight = 3),
