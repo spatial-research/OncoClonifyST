@@ -175,14 +175,14 @@ plot_complex_heatmap <- function(infercnv_obj,
   obs_anno_df$Section <- str_remove(str_remove(rownames(obs_anno_df), "_[^_]*$"), "^[^_]*_")
 
   # Calculate the heatmaps plot heights
-  obs_plot_height = (ncol(obs_expr) / ncol(expr)) * 12
-  ref_plot_height = (ncol(expr) - ncol(obs_expr)) / ncol(expr) * 12
-  if (ref_plot_height < 1.2) {
-    ref_plot_height = 1.2
-    obs_plot_height = 10.8
-  } else if (ref_plot_height > 3) {
-    ref_plot_height = 3
+  obs_plot_height = (ncol(obs_expr) / ncol(expr)) * 10
+  ref_plot_height = (ncol(expr) - ncol(obs_expr)) / ncol(expr) * 10
+  if (ref_plot_height < 1) {
+    ref_plot_height = 1
     obs_plot_height = 9
+  } else if (ref_plot_height > 2.5) {
+    ref_plot_height = 2.5
+    obs_plot_height = 7.5
   }
 
   # Dendrogram
