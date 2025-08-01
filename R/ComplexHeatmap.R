@@ -611,12 +611,12 @@ plot_complex_heatmap <- function(infercnv_obj,
          annotation_legend_side = "bottom"
     )
     if (isTRUE(ref_pie_chart)) {
-      pie_vp <- viewport(x = 0.02, y = 0.87, width = 0.15, height = 0.15, just = c("left", "top"))
+      pie_vp <- viewport(x = 0.01, y = 0.87, width = 0.15, height = 0.15, just = c("left", "top"))
       pushViewport(pie_vp)
       grid.draw(ref_pie_grob)
       popViewport()
     }
-    legend_vp <- viewport(x = 0.04, y = 0.97, width = 0.10, height = 0.10, just = c("left", "top"))
+    legend_vp <- viewport(x = 0.03, y = 0.97, width = 0.10, height = 0.10, just = c("left", "top"))
     pushViewport(legend_vp)
     grid.draw(legend_plot_grob)
     popViewport()
@@ -632,12 +632,12 @@ plot_complex_heatmap <- function(infercnv_obj,
          annotation_legend_side = "bottom"
     )
     if (isTRUE(ref_pie_chart)) {
-      pie_vp <- viewport(x = 0.02, y = 0.87, width = 0.15, height = 0.15, just = c("left", "top"))
+      pie_vp <- viewport(x = 0.01, y = 0.87, width = 0.15, height = 0.15, just = c("left", "top"))
       pushViewport(pie_vp)
       grid.draw(ref_pie_grob)
       popViewport()
     }
-    legend_vp <- viewport(x = 0.04, y = 0.97, width = 0.10, height = 0.10, just = c("left", "top"))
+    legend_vp <- viewport(x = 0.03, y = 0.97, width = 0.10, height = 0.10, just = c("left", "top"))
     pushViewport(legend_vp)
     grid.draw(legend_plot_grob)
     popViewport()
