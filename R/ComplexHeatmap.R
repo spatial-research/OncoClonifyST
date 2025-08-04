@@ -13,7 +13,7 @@
 #' @param annotation_name Character string indicating what additional annotation is desired. Example `"Histology"`.
 #' @param annotation_df A data frame or path to a TSV file with additional annotation information (annotation should be in the first column). Required if annotation_type is used.
 #' @param output_format File format for the saved heatmap: `"png"` (default) or `"pdf"`.
-#' @param output_name File name for the saved heatmap. Default is `"complex_heatmap.png"`.
+#' @param output_name File name for the saved heatmap. Default is `"complex_heatmap"`. Extension is added automatically!
 #' @param class_cols Optional. Named list or vector of colors for classes groups within object. Format: `c("A" = "#hex", ...)`.
 #' @param anno_cols Optional. Named list or vector of colors for additional annotation groups. Format: `c("A" = "#hex", ...)`.
 #' @param ref_pie_chart Optional. Adds a section distribution pie chart of the reference
@@ -50,7 +50,7 @@ plot_complex_heatmap <- function(infercnv_obj,
                                  annotation_name = NULL,
                                  annotation_df = NULL,
                                  output_format = "png",
-                                 output_name = "complex_heatmap.png",
+                                 output_name = "complex_heatmap",
                                  class_cols = NULL,
                                  anno_cols = NULL,
                                  ref_pie_chart = FALSE,
@@ -603,7 +603,7 @@ plot_complex_heatmap <- function(infercnv_obj,
   ht_list <- ref_ht %v% obs_ht
 
   if (output_format == "png") {
-    png(file.path(output_dir, output_name), width = 20, height = 15, units = "in", res = 300)
+    png(file.path(output_dir, paste0(output_name, ".png")), width = 20, height = 15, units = "in", res = 300)
     draw(ht_list,
          padding = unit(c(1, 1, 2, 1), "cm"),
          column_title = "Genomic Region",
@@ -624,7 +624,7 @@ plot_complex_heatmap <- function(infercnv_obj,
     popViewport()
     dev.off()
   } else if (output_format == "pdf") {
-    pdf(file.path(output_dir, output_name), width = 20, height = 15)
+    pdf(file.path(output_dir, paste0(output_name, ".pdf")), width = 20, height = 15)
     draw(ht_list,
          padding = unit(c(1, 1, 2, 1), "cm"),
          column_title = "Genomic Region",
