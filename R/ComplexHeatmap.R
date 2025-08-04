@@ -173,6 +173,7 @@ plot_complex_heatmap <- function(infercnv_obj,
   obs_anno_df$CB <- NULL
 
   obs_anno_df$Section <- str_remove(str_remove(rownames(obs_anno_df), "_[^_]*$"), "^[^_]*_")
+  obs_anno_df$Section <- factor(obs_anno_df$Section, levels = unique_samples)
 
   # Calculate the heatmaps plot heights
   obs_plot_height = (ncol(obs_expr) / ncol(expr)) * 10
@@ -492,6 +493,7 @@ plot_complex_heatmap <- function(infercnv_obj,
     ref_anno_df$CB <- NULL
 
     ref_anno_df$Section <- str_remove(str_remove(rownames(ref_anno_df), "_[^_]*$"), "^[^_]*_")
+    ref_anno_df$Section <- factor(ref_anno_df$Section, levels = unique_samples)
 
     if (is.null(annotation_name)) {
       ref_anno_df[[obs_class]] <- "Benign"
