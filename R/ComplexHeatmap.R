@@ -300,7 +300,7 @@ plot_complex_heatmap <- function(infercnv_obj,
         x_clones_levels <- clone_levels[str_detect(clone_levels, "^X")]
         x_clone_color_indices <- round(seq(1, length(clone_x_colors_default), length.out = length(x_clones_levels)))
         x_clone_colors <- setNames(clone_x_colors_default[x_clone_color_indices], x_clones_levels)
-        class_colors <- c(non_x_clone_colors, x_clone_colors)[clone_levels]
+        class_cols <- c(non_x_clone_colors, x_clone_colors)[clone_levels]
       } else {
         class_cols <- setNames(clone_colors_full,
                                sort(unique(obs_anno_df[[obs_class]])))
