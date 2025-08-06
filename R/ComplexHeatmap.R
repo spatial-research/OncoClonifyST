@@ -34,7 +34,7 @@
 #'   output_dir = "results/",
 #'   heatmap_thresholds_file = "results/infercnv.heatmap_thresholds.txt",
 #'   dendrogram_file = "results/infercnv.observations_dendrogram.txt",
-#'   obs_class = "clone",
+#'   obs_class = "Clone",
 #'   annotation_name = "histology",
 #'   annotation_df = "metadata/histologies.tsv",
 #'   class_cols = c("A" = "#FF0000", "B" = "#0000FF"),
@@ -292,7 +292,7 @@ plot_complex_heatmap <- function(infercnv_obj,
     obs_anno_df <- obs_anno_df %>% rename({{obs_class}} := class)
 
     if (is.null(class_cols)) {
-      if (obs_class == "clone") {
+      if (obs_class == "Clone") {
         clone_levels <- sort(unique(obs_anno_df[[obs_class]]))
         non_x_clones_levels <- clone_levels[!str_detect(clone_levels, "^X")]
         non_x_clone_color_indices <- round(seq(1, length(clone_colors_default), length.out = length(non_x_clones_levels)))
