@@ -28,6 +28,7 @@
 #' - Colors are automatic assigned but can be overridden for class and anno.
 #' - Chromosome and CNV coloring is derived from inferCNV settings and thresholds.
 #' - Reference and query heatmap size will scale to relative sizes but has an lower and upper limit of 10% and 25%.
+#' - If subcluster is used during inferCNV run and set to TRUE, no additional annotation is needed. If additional annotations is provided using annotation_name and annotation_df these will be used instead of the ones stored in the inferCNV object
 #'
 #' @examples
 #' plot_complex_heatmap(
@@ -200,18 +201,20 @@ plot_complex_heatmap <- function(infercnv_obj,
   if (inherits(tree, "phylo")) {
     
     dend <- as.dendrogram(as.hclust(tree))
-    dend <- rev(dend)
     
     # Re-order based on dendrogram
     dend_labels <- labels(dend)
     missing_labels <- setdiff(dend_labels, colnames(obs_expr))
+    
     if (length(missing_labels) > 0) {
       stop("Some labels in the dendrogram are not found in obs_expr: ", paste(missing_labels, collapse = ", "))
     }
+    
     obs_expr <- obs_expr[, labels(dend)]
     obs_anno_df <- obs_anno_df[labels(dend), ]
     
     row_split <- NULL
+    
   } else if (inherits(tree, "multiPhylo")) {
     
     clone_dend_list <- lapply(tree, function(single_tree) {
@@ -264,6 +267,10 @@ plot_complex_heatmap <- function(infercnv_obj,
       class_cols <- setNames(hist_colors_default,
                              sort(unique(obs_anno_df[[obs_class]])))
       class_cols <- class_cols[!is.na((names(class_cols)))]
+    }
+    
+    if (!"Benign" %in% names(anno_cols)) {
+      anno_cols["Benign"] <- "#5C5FA1"
     }
     
     anno_type <- c("Section", obs_class)
@@ -337,26 +344,30 @@ plot_complex_heatmap <- function(infercnv_obj,
       obs_sub <- infercnv_obj@observation_grouped_cell_indices
       expr_raw <- infercnv_obj@expr.data
       
-      histology_map <- rep(NA, ncol(expr))
-      names(histology_map) <- colnames(expr)
+      class_map <- rep(NA, ncol(expr))
+      names(class_map) <- colnames(expr)
       
       for (group_name in names(obs_sub)) {
         indices_to_update <- obs_sub[[group_name]]
         cell_names_to_update <- colnames(expr)[indices_to_update]
-        histology_map[cell_names_to_update] <- group_name
+        class_map[cell_names_to_update] <- group_name
       }
       
-      obs_anno_df$Histology <- histology_map[rownames(obs_anno_df)]
+      obs_anno_df$class <- class_map[rownames(obs_anno_df)]
+      obs_anno_df <- obs_anno_df %>% rename({{obs_class}} := class)
       
-      annotation_name <- "Histology"
+      annotation_name <- obs_class
+      obs_class <- "Clone"
     } else {
       stop("`annotation_df` must be either a file path to a .tsv or a data frame or subcluster used.")
     }
-    if (!all(rownames(obs_anno_df) %in% rownames(hist_anno))) {
-      stop("annotation_df data frame rownames must contain all inferCNV object observation rownames")
-    }
+    
     
     if (subcluster == FALSE){
+      if (!all(rownames(obs_anno_df) %in% rownames(hist_anno))) {
+        stop("annotation_df data frame rownames must contain all inferCNV object observation rownames")
+      }
+      
       hist_anno <- hist_anno[rownames(obs_anno_df), , drop = FALSE]
       
       obs_anno_df[[annotation_name]] <- hist_anno[rownames(obs_anno_df), annotation_name]
@@ -366,6 +377,14 @@ plot_complex_heatmap <- function(infercnv_obj,
       anno_cols <- setNames(hist_colors_default,
                             sort(unique(obs_anno_df[[annotation_name]])))
       anno_cols <- anno_cols[!is.na((names(anno_cols)))]
+    }
+    
+    if (!"Benign" %in% names(anno_cols)) {
+      anno_cols["Benign"] <- "#5C5FA1"
+    }
+    
+    if (!"0" %in% names(class_cols)) {
+      class_cols["0"] <- "#D3D3D3"
     }
     
     anno_type <- c("Section", annotation_name, obs_class)
@@ -531,7 +550,7 @@ plot_complex_heatmap <- function(infercnv_obj,
     ref_anno_df$Section <- str_remove(str_remove(rownames(ref_anno_df), "_[^_]*$"), "^[^_]*_")
     ref_anno_df$Section <- factor(ref_anno_df$Section, levels = unique_samples)
     
-    if (is.null(annotation_name)) {
+    if (is.null(annotation_name) && subcluster == FALSE) {
       ref_anno_df[[obs_class]] <- "Benign"
       
       ref_left_anno <- rowAnnotation(
