@@ -59,6 +59,7 @@ plot_complex_heatmap <- function(infercnv_obj,
                                  ref_pie_chart = FALSE,
                                  sample_order = NULL) {
   
+  library(SpatialInferCNV)
   library(ComplexHeatmap)
   library(tidyverse)
   library(RColorBrewer)
@@ -197,6 +198,7 @@ plot_complex_heatmap <- function(infercnv_obj,
   }
   
   # Dendrogram
+  line_layer_fun <- NULL
   tree <- read.tree(dendrogram_file)
   if (inherits(tree, "phylo")) {
     
@@ -215,6 +217,23 @@ plot_complex_heatmap <- function(infercnv_obj,
     
     row_split <- NULL
     
+    if (subcluster == TRUE) {
+      line_layer_fun <- function(j, i, x, y, width, height, fill) {
+        obs_indices <- 1:nrow(obs_anno_df)
+        clone_labels <- obs_anno_df[obs_indices, "Clone"]
+        clone_breaks <- rle(as.character(clone_labels))
+        end_points <- cumsum(clone_breaks$lengths)
+        boundary_indices <- end_points[-length(end_points)]
+        boundary_y <- (y[boundary_indices] + y[boundary_indices + 1]) / 2
+        grid.segments(
+          x0 = unit(0, "npc"),
+          y0 = boundary_y,        
+          x1 = unit(1, "npc"),
+          y1 = boundary_y,
+          gp = gpar(col = "black", lwd = 4)
+        )
+      }
+    }
   } else if (inherits(tree, "multiPhylo")) {
     
     clone_dend_list <- lapply(tree, function(single_tree) {
@@ -457,7 +476,8 @@ plot_complex_heatmap <- function(infercnv_obj,
     raster_device = "agg_png",
     raster_quality = 6,
     raster_resize_mat = FALSE,
-    raster_by_magick = FALSE
+    raster_by_magick = FALSE,
+    layer_fun = line_layer_fun
   )
   
   # Function for heatmap legend
