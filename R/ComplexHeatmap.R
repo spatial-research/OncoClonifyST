@@ -43,6 +43,17 @@
 #'   anno_cols = c("A" = "#E41A1C", "B" = "#377EB8"),
 #'   ref_pie_chart = TRUE
 #' )
+#' 
+#' # Subclusters from inferCNV
+#' plot_complex_heatmap(
+#'   infercnv_obj = infercnv_final,
+#'   output_dir = "results/",
+#'   heatmap_thresholds_file = "results/infercnv.heatmap_thresholds.txt",
+#'   dendrogram_file = "results/infercnv.observations_dendrogram.txt",
+#'   obs_class = "Histology",
+#'   subcluster = TRUE,
+#'   ref_pie_chart = TRUE
+#' )
 
 plot_complex_heatmap <- function(infercnv_obj,
                                  output_dir,
