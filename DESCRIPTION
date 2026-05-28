@@ -1,11 +1,23 @@
 Package: OncoClonifyST
-Title: What the Package Does (One Line, Title Case)
+Title: InferCNV Visualization and TME Analysis for Spatial Cancer Data
 Version: 0.0.0.9000
 Authors@R: 
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
-License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
-    license
+    person("Mengxiao", "He", , "mengxiao.he@scilifelab.se", role = c("aut", "cre"))
+Description: Functions for inferCNV output visualization and TME analysis of spatial cancer data.
+License: MIT + file LICENSE
 Encoding: UTF-8
+Depends:
+    R (>= 4.1.0),
+    semla,
+    Seurat,
+    SeuratObject
+Imports:
+    dplyr,
+    ggplot2,
+    patchwork,
+    tibble,
+    igraph,
+    infercnv,
+    magrittr
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 8.0.0
