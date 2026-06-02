@@ -69,6 +69,7 @@ Barcodes needs to be formatted in the following way: pt03_AP1_CAATGGATACGCTCGA.1
 }
 }
 \examples{
+\dontrun{
 plot_complex_heatmap(
   infercnv_obj = infercnv_final,
   output_dir = "results/",
@@ -92,4 +93,6 @@ plot_complex_heatmap(
   subcluster = TRUE,
   ref_pie_chart = TRUE
 )
+}
+
 }

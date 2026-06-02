@@ -31,6 +31,7 @@
 #' - If subcluster is used during inferCNV run and set to TRUE, no additional annotation is needed. If additional annotations is provided using annotation_name and annotation_df these will be used instead of the ones stored in the inferCNV object
 #'
 #' @examples
+#' \dontrun{
 #' plot_complex_heatmap(
 #'   infercnv_obj = infercnv_final,
 #'   output_dir = "results/",
@@ -54,21 +55,23 @@
 #'   subcluster = TRUE,
 #'   ref_pie_chart = TRUE
 #' )
+#' }
 #'
 #' @import dplyr
+#' @import ComplexHeatmap
 #' @import grDevices
 #' @import grid
-#' @import ComplexHeatmap
 #' @import ggplot2
+#' @importFrom methods is
+#' @importFrom graphics hist
+#' @importFrom stats as.dendrogram as.hclust dist hclust setNames
 #' @importFrom stringr str_detect str_remove
 #' @importFrom readr read_csv
 #' @importFrom purrr is_empty
-#' @importFrom stats dist hclust setNames
 #' @importFrom utils read.table
 #' @importFrom RColorBrewer brewer.pal
 #' @importFrom ggrepel geom_label_repel
 #' @importFrom ape read.tree
-#' @importFrom dendextend as.dendrogram
 #'
 #' @export
 plot_complex_heatmap <- function(infercnv_obj,
