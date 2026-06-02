@@ -35,7 +35,7 @@
 #'   box_fill = "lightblue"
 #' )
 #'
-
+#' @export
 plot_infercnv_chr_boxplots <- function(infercnv_obj,
                                        chromosome,
                                        split_by_arm = FALSE,
@@ -48,46 +48,46 @@ plot_infercnv_chr_boxplots <- function(infercnv_obj,
                                        facet_ncol = 1,
                                        free_y = TRUE,
                                        box_fill = "lightblue") {
-  
+
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
     stop("Package 'ggplot2' is required but not installed.")
   }
-  
+
   expr <- infercnv_obj@expr.data
   gene_order <- infercnv_obj@gene_order
-  
+
   if (is.null(expr) || nrow(expr) == 0 || ncol(expr) == 0) {
     stop("infercnv_obj@expr.data is empty or NULL.")
   }
-  
+
   if (is.null(gene_order) || nrow(gene_order) == 0) {
     stop("infercnv_obj@gene_order is empty or NULL.")
   }
-  
+
   if (!all(c("chr", "start") %in% colnames(gene_order))) {
     stop("infercnv_obj@gene_order must contain at least the columns 'chr' and 'start'.")
   }
-  
+
   if (is.null(rownames(gene_order))) {
     stop("infercnv_obj@gene_order must have gene names as rownames.")
   }
-  
+
   # Build spot annotation table from infercnv object
   spot_annot_df <- data.frame(Spot = colnames(expr), stringsAsFactors = FALSE)
   spot_annot_df$Type <- "Reference"
   spot_annot_df$Clone <- "Reference"
-  
+
   obs_groups <- infercnv_obj@observation_grouped_cell_indices
-  
+
   if (!is.null(obs_groups) && length(obs_groups) > 0) {
     obs_idx <- unlist(obs_groups)
     spot_annot_df$Type[obs_idx] <- "Query"
-    
+
     for (grp in names(obs_groups)) {
       spot_annot_df$Clone[obs_groups[[grp]]] <- grp
     }
   }
-  
+
   # Optional clone filtering
   if (is.null(clones_to_plot)) {
     clone_levels <- c("Reference", names(obs_groups))
@@ -101,61 +101,61 @@ plot_infercnv_chr_boxplots <- function(infercnv_obj,
         )
       )
     }
-    
+
     valid_clones <- clones_to_plot[clones_to_plot %in% names(obs_groups)]
-    
+
     if (length(valid_clones) == 0) {
       stop("None of the requested clones in clones_to_plot were found in the infercnv object.")
     }
-    
+
     clone_levels <- c("Reference", valid_clones)
-    
+
     spot_annot_df <- spot_annot_df[spot_annot_df$Clone %in% clone_levels, , drop = FALSE]
   }
-  
+
   # Subset gene order to chromosome of interest
   chr_info <- gene_order[gene_order$chr == chromosome, , drop = FALSE]
-  
+
   if (nrow(chr_info) == 0) {
     stop(paste("No genes found in infercnv_obj@gene_order for", chromosome))
   }
-  
+
   chr_info <- chr_info[order(chr_info$start), , drop = FALSE]
   chr_genes <- rownames(chr_info)
-  
+
   # Keep only genes present in expression matrix
   genes_present <- chr_genes[chr_genes %in% rownames(expr)]
-  
+
   if (length(genes_present) == 0) {
     stop(paste("No genes from", chromosome, "found in infercnv_obj@expr.data"))
   }
-  
+
   expr_sub <- expr[genes_present, spot_annot_df$Spot, drop = FALSE]
-  
+
   # Convert to long format using base R
   expr_long <- as.data.frame(as.table(expr_sub), stringsAsFactors = FALSE)
   colnames(expr_long) <- c("Gene", "Spot", "Expression")
-  
+
   # Merge with annotations
   expr_long <- merge(expr_long, spot_annot_df, by = "Spot", all.x = TRUE)
-  
+
   if (any(is.na(expr_long$Clone))) {
     warning("Some spots in the expression matrix were not matched to Clone labels.")
   }
-  
+
   expr_long$Gene <- factor(expr_long$Gene, levels = genes_present)
   expr_long$Clone <- factor(expr_long$Clone, levels = clone_levels)
-  
+
   if (is.null(plot_title)) {
     plot_title <- paste("Expression of", chromosome, "genes by Reference and Clone")
   }
-  
+
   if (is.null(x_lab)) {
     x_lab <- paste0("Gene (", chromosome, ", ordered by position)")
   }
-  
+
   facet_scales <- if (isTRUE(free_y)) "free_y" else "fixed"
-  
+
   p <- ggplot2::ggplot(expr_long, ggplot2::aes(x = Gene, y = Expression)) +
     ggplot2::geom_boxplot(outlier.shape = NA, fill = box_fill) +
     ggplot2::facet_wrap(~ Clone, ncol = facet_ncol, scales = facet_scales) +
@@ -169,23 +169,23 @@ plot_infercnv_chr_boxplots <- function(infercnv_obj,
       x = x_lab,
       y = y_lab
     )
-  
+
   if (split_by_arm) {
     if (is.null(centromere_pos)) {
       stop("split_by_arm = TRUE requires centromere_pos to be provided.")
     }
-    
+
     if (!chromosome %in% names(centromere_pos)) {
       stop(paste("No centromere position found for", chromosome))
     }
-    
+
     split_pos <- centromere_pos[[chromosome]]
-    
+
     chr_info_present <- chr_info[match(genes_present, rownames(chr_info)), , drop = FALSE]
-    
+
     left_idx <- which(chr_info_present$start < split_pos)
     right_idx <- which(chr_info_present$start > split_pos)
-    
+
     if (length(left_idx) == 0 || length(right_idx) == 0) {
       warning(paste("Could not place arm split line for", chromosome,
                     "- centromere position falls outside plotted gene positions"))
@@ -193,7 +193,7 @@ plot_infercnv_chr_boxplots <- function(infercnv_obj,
       i_left <- max(left_idx)
       i_right <- min(right_idx)
       arm_split_x <- mean(c(i_left, i_right))
-      
+
       p <- p + ggplot2::geom_vline(
         xintercept = arm_split_x,
         linetype = "dashed",
@@ -201,6 +201,6 @@ plot_infercnv_chr_boxplots <- function(infercnv_obj,
       )
     }
   }
-  
+
   return(p)
 }

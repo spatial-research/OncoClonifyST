@@ -70,7 +70,7 @@
 #' @importFrom ape read.tree
 #' @importFrom dendextend as.dendrogram
 #'
-
+#' @export
 plot_complex_heatmap <- function(infercnv_obj,
                                  output_dir,
                                  heatmap_thresholds_file,
