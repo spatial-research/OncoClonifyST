@@ -26,6 +26,7 @@
 #' - If `split_by_arm = TRUE`, a dashed line is added at the supplied centromere position.
 #'
 #' @examples
+#' \dontrun{
 #' plot_infercnv_chr_boxplots(
 #'   infercnv_obj = infercnv_final,
 #'   chromosome = "chr8",
@@ -34,6 +35,7 @@
 #'   clones_to_plot = c("Clone.1", "Clone.2"),
 #'   box_fill = "lightblue"
 #' )
+#' }
 #'
 #' @export
 plot_infercnv_chr_boxplots <- function(infercnv_obj,

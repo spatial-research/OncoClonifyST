@@ -62,8 +62,6 @@
 #' @import grDevices
 #' @import grid
 #' @import ggplot2
-#' @importFrom methods is
-#' @importFrom graphics hist
 #' @importFrom stats as.dendrogram as.hclust dist hclust setNames
 #' @importFrom stringr str_detect str_remove
 #' @importFrom readr read_csv
@@ -99,7 +97,7 @@ plot_complex_heatmap <- function(infercnv_obj,
 
   if (is.character(infercnv_obj) && file.exists(infercnv_obj)) {
     infercnv_obj <- readRDS(infercnv_obj)
-  } else if (!is(infercnv_obj, "infercnv")) {
+  } else if (!methods::is(infercnv_obj, "infercnv")) {
     stop("`infercnv_obj` must be either a file path or a loaded inferCNV object.")
   }
 
@@ -589,7 +587,7 @@ plot_complex_heatmap <- function(infercnv_obj,
     expr_data_clamped <- pmax(expr_data, min(breaks))
     expr_data_clamped <- pmin(expr_data_clamped, max(breaks))
 
-    h <- hist(expr_data_clamped, breaks = breaks, plot = FALSE)
+    h <- graphics::hist(expr_data_clamped, breaks = breaks, plot = FALSE)
     hist_data <- data.frame(
       x = rep(h$breaks, each = 2),
       y = c(0, rep(h$counts, each = 2), 0)

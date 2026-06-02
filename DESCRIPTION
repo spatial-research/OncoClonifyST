@@ -7,25 +7,27 @@ Description: Functions for inferCNV output visualization and TME analysis of spa
 License: MIT + file LICENSE
 Encoding: UTF-8
 Depends:
-    R (>= 4.1.0),
-    semla,
-    Seurat,
-    SeuratObject
+    R (>= 4.1.0)
 Imports:
     ape,
     ComplexHeatmap,
     dplyr,
     ggplot2,
     ggrepel,
+    graphics,
     grDevices,
     grid,
     infercnv,
     igraph,
     magrittr,
+    methods,
     patchwork,
     purrr,
     RColorBrewer,
     readr,
+    semla,
+    Seurat,
+    SeuratObject,
     stringr,
     tibble
 Roxygen: list(markdown = TRUE)

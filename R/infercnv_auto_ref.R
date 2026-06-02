@@ -225,16 +225,16 @@ run_infercnv_auto_ref <- function(
     stop("'plot' must be either TRUE or FALSE")
   }
 
-  Idents(obj) <- hist_column
-  query_obj <- SubsetSTData(obj,
+  SeuratObject::Idents(obj) <- hist_column
+  query_obj <- semla::SubsetSTData(obj,
                             idents = query_anno,
                             expression = nFeature_Spatial >= min_feats &
                               nCount_Spatial >= min_counts
   )
-  ref_obj <- SubsetSTData(query_obj,
+  ref_obj <- semla::SubsetSTData(query_obj,
                           idents = ref_anno
   )
-  mat_ref <- GetAssayData(ref_obj,
+  mat_ref <- Seurat::GetAssayData(ref_obj,
                           assay = "Spatial",
                           layer = "counts")
   n_ref <- ncol(mat_ref)
@@ -407,7 +407,7 @@ run_infercnv_auto_ref <- function(
   if (file.exists(file.path(ref_out_dir,'run.final.infercnv_obj'))) {
     message("   * inferCNV-with-ref already exists")
   } else {
-    expr_all <- GetAssayData(query_obj, assay="Spatial", layer="counts")
+    expr_all <- Seurat::GetAssayData(query_obj, assay="Spatial", layer="counts")
 
     infercnv_group_col <- paste0(hist_column, "_pure_ref")
     meta_all <- query_obj@meta.data %>%
