@@ -172,6 +172,7 @@
 #' @import readr
 #' @import dplyr
 #' @import ggplot2
+#' @importFrom stats kmeans
 #' @importFrom tibble tibble
 #' @importFrom magrittr %>%
 #'
