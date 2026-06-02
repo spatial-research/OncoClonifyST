@@ -12,12 +12,22 @@ Depends:
     Seurat,
     SeuratObject
 Imports:
+    ape,
+    ComplexHeatmap,
+    dendextend,
     dplyr,
     ggplot2,
-    patchwork,
-    tibble,
-    igraph,
+    ggrepel,
+    grDevices,
+    grid,
     infercnv,
-    magrittr
+    igraph,
+    magrittr,
+    patchwork,
+    purrr,
+    RColorBrewer,
+    readr,
+    stringr,
+    tibble
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 8.0.0
