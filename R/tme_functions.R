@@ -56,7 +56,7 @@ calculate_median_maxDist <- function(object, sid) {
 #'
 #' @import dplyr
 #' @importFrom tibble rownames_to_column
-#' @importFrom semla GetSpatialNetwork
+#' @importFrom semla GetSpatialNetwork SubsetSTData
 #' @importFrom magrittr %>%
 #'
 #' @export
@@ -95,11 +95,18 @@ remove_singletons <- function(
     spatnet <- setNames(
       lapply(section_ids, function(sid) {
         md <- calculate_median_maxDist(object, sid)
-        sub_obj <- subset(object, cells = colnames(object)[object@tools$Staffli@meta_data$sampleID == sid])
+        sub_obj <- SubsetSTData(object, spots = colnames(object)[object@tools$Staffli@meta_data$sampleID == sid])
         GetSpatialNetwork(sub_obj, nNeighbors = nNeighbors, maxDist = md)[[1]]
       }),
       section_ids
     )
+    for (id in names(spatnet)) {
+      suffix <- paste0("-", id)
+      df <- spatnet[[id]]
+      df$from <- sub("-\\d+$", suffix, df$from)
+      df$to   <- sub("-\\d+$", suffix, df$to)
+      spatnet[[id]] <- df
+    }
   } else {
     spatnet <- GetSpatialNetwork(object, nNeighbors = nNeighbors)
   }
@@ -201,7 +208,7 @@ remove_singletons <- function(
 #'
 #' @import dplyr
 #' @importFrom tibble rownames_to_column tibble
-#' @importFrom semla GetSpatialNetwork
+#' @importFrom semla GetSpatialNetwork SubsetSTData
 #' @importFrom igraph graph_from_data_frame components
 #' @importFrom magrittr %>%
 #'
@@ -239,11 +246,18 @@ remove_small_spatial_islands <- function(
     spatnet <- setNames(
       lapply(section_ids, function(sid) {
         md <- calculate_median_maxDist(object, sid)
-        sub_obj <- subset(object, cells = colnames(object)[object@tools$Staffli@meta_data$sampleID == sid])
+        sub_obj <- SubsetSTData(object, spots = colnames(object)[object@tools$Staffli@meta_data$sampleID == sid])
         GetSpatialNetwork(sub_obj, nNeighbors = nNeighbors, maxDist = md)[[1]]
       }),
       section_ids
     )
+    for (id in names(spatnet)) {
+      suffix <- paste0("-", id)
+      df <- spatnet[[id]]
+      df$from <- sub("-\\d+$", suffix, df$from)
+      df$to   <- sub("-\\d+$", suffix, df$to)
+      spatnet[[id]] <- df
+    }
   } else {
     spatnet <- GetSpatialNetwork(object, nNeighbors = nNeighbors)
   }
@@ -361,7 +375,7 @@ remove_small_spatial_islands <- function(
 #'
 #' @return Seurat object with additional region-neighbor metadata columns.
 #'
-#' @importFrom semla RegionNeighbors
+#' @importFrom semla RegionNeighbors SubsetSTData
 #' @importFrom stats na.omit
 #'
 #' @export
@@ -400,11 +414,23 @@ make_region_neighbors_overlap_aware <- function(
       if (length(cells) == 0)
         next
 
-      sub_obj <- subset(object, cells = colnames(object)[cells])
+      sub_obj <- SubsetSTData(object, spots = colnames(object)[cells])
+
+      sub_obj@tools$Staffli@meta_data$sampleID <- sid
+      sub_obj@tools$Staffli@meta_data$barcode <- sub(
+        "-\\d+$",
+        paste0("-", sid),
+        sub_obj@tools$Staffli@meta_data$barcode
+      )
 
       temp_col_name <- paste0("tmp_expand_", make.names(label))
       temp_col <- rep(NA_character_, length(cells))
       temp_col[base_labels[cells] == label] <- label
+
+      if (!any(temp_col == label, na.rm = TRUE)) {
+        next
+      }
+
       sub_obj[[temp_col_name]] <- temp_col
 
       md <- NULL
@@ -430,6 +456,14 @@ make_region_neighbors_overlap_aware <- function(
           warning("No RegionNeighbors columns found for key: ", key)
           next
         }
+        if (length(nb_cols) > 0) {
+          sub_obj@meta.data[, nb_cols] <- lapply(
+            sub_obj@meta.data[, nb_cols, drop = FALSE],
+            function(x) sub("-\\d+$", paste0("-", sid), x)
+          )
+        }
+
+        md_data <- sub_obj@meta.data
 
         is_neighbor <- rowSums(
           md_data[, nb_cols, drop = FALSE] == as.character(label),
