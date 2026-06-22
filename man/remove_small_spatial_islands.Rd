@@ -10,6 +10,7 @@ remove_small_spatial_islands(
   sample_col = "sample_id",
   nNeighbors = 6,
   min_island_size = 2,
+  maxDist_method = c("minimum", "median"),
   new_col = NULL,
   section_map = NULL
 )
@@ -27,6 +28,10 @@ Defaults to \code{"sample_id"}.}
 spatial neighbor graph. Passed to \code{GetSpatialNetwork()}.}
 
 \item{min_island_size}{Minimum connected island size to retain.}
+
+\item{maxDist_method}{Character string specifying how to compute the
+distance cut‐off.  Either "minimum" or "median".  Defaults to
+"minimum". median is not section-wise.}
 
 \item{new_col}{Name of the metadata column where cleaned labels will be
 stored. If \code{NULL}, defaults to \code{paste0(label_col, "_no_small_islands")}.}

@@ -1,3 +1,31 @@
+# Helper function to compute a median distance cut-off.
+#
+# This internal helper returns a median `maxDist` value for a given sample/section
+# depending on the chosen method. It extracts pixel coordinates from the `Staffli`
+# object, computes the first nearest neighbour distances for all barcodes
+# belonging to the specified section, takes their median and multiplies by
+# 1.2.  The resulting value can be passed directly to `GetSpatialNetwork()`
+# or `RegionNeighbors()` to obtain a median instead of minimum neighbour distance.
+#
+# @param object A Seurat object containing spatial data and a Staffli object.
+# @param sample_id A single character identifying the section (matching the
+#        values in `sample_col`).
+# @param sample_col The name of the column in metadata that stores sample IDs.
+#        Defaults to "sample_id".
+# @param method Character string: either "minimum" or "median".  See
+#        details above.
+# @return A numeric distance threshold when `method = "median"`, otherwise
+#        `NULL` if `method = "minimum"`.
+# @importFrom semla GetStaffli
+# @importFrom dbscan kNN
+calculate_median_maxDist <- function(object) {
+  st_obj <- semla::GetStaffli(object)
+  coords <- st_obj@meta_data[, c("pxl_col_in_fullres", "pxl_row_in_fullres")]
+  nn_res <- dbscan::kNN(coords, k = 1)
+  return(median(nn_res$dist) * 1.2)
+}
+
+
 #' Remove spatial singleton labels
 #'
 #' Removes labeled spots that do not have any neighboring spot with the same
@@ -11,6 +39,11 @@
 #' Defaults to `"sample_id"`.
 #' @param nNeighbors Number of spatial neighbors to use when constructing the
 #' spatial neighbor graph. Passed to `GetSpatialNetwork()`.
+#' @param maxDist_method Character string specifying how to compute the
+#' distance cut‐off.  Either "minimum" (use semla’s default based on
+#' the minimum nearest neighbour distance) or "median" (compute a
+#' cut‐off from the median nearest neighbour distance, not section wise).  Defaults to
+#' "minimum".
 #' @param new_col Name of the metadata column where cleaned labels will be
 #' stored. If `NULL`, defaults to `paste0(label_col, "_nosingletons")`.
 #' @param section_map Named character vector mapping sample IDs to spatial
@@ -29,11 +62,19 @@ remove_singletons <- function(
     label_col,
     sample_col = "sample_id",
     nNeighbors = 6,
+    maxDist_method = c("minimum","median"),
     new_col = NULL,
     section_map = NULL
 ) {
   if (missing(label_col)) {
     stop("You must provide 'label_col'")
+  }
+
+  maxDist_method <- match.arg(maxDist_method)
+
+  maxDist_value <- NULL
+  if (maxDist_method == "median") {
+    maxDist_value <- calculate_median_maxDist(object)
   }
 
   if (is.null(new_col)) {
@@ -44,7 +85,7 @@ remove_singletons <- function(
     stop("Please provide a section_map, e.g. c('A1'='-1', 'A2'='-2', ...)")
   }
 
-  spatnet <- GetSpatialNetwork(object, nNeighbors = nNeighbors)
+  spatnet <- GetSpatialNetwork(object, nNeighbors = nNeighbors, maxDist = maxDist_value)
 
   meta_df <- object[[]] %>%
     rownames_to_column("barcode") %>%
@@ -131,6 +172,9 @@ remove_singletons <- function(
 #' @param nNeighbors Number of spatial neighbors to use when constructing the
 #' spatial neighbor graph. Passed to `GetSpatialNetwork()`.
 #' @param min_island_size Minimum connected island size to retain.
+#' @param maxDist_method Character string specifying how to compute the
+#' distance cut‐off.  Either "minimum" or "median".  Defaults to
+#' "minimum". median is not section-wise.
 #' @param new_col Name of the metadata column where cleaned labels will be
 #' stored. If `NULL`, defaults to `paste0(label_col, "_no_small_islands")`.
 #' @param section_map Named character vector mapping sample IDs to spatial
@@ -151,9 +195,18 @@ remove_small_spatial_islands <- function(
     sample_col = "sample_id",
     nNeighbors = 6,
     min_island_size = 2,
+    maxDist_method = c("minimum", "median"),
     new_col = NULL,
     section_map = NULL
 ) {
+
+  maxDist_method <- match.arg(maxDist_method)
+
+  maxDist_value <- NULL
+  if (maxDist_method == "median") {
+    maxDist_value <- calculate_median_maxDist(object)
+  }
+
   if (is.null(new_col)) {
     new_col <- paste0(label_col, "_no_small_islands")
   }
@@ -162,7 +215,7 @@ remove_small_spatial_islands <- function(
     stop("Please provide a section_map, e.g. c('A1'='-1', 'A2'='-2', ...)")
   }
 
-  spatnet <- GetSpatialNetwork(object, nNeighbors = nNeighbors)
+  spatnet <- GetSpatialNetwork(object, nNeighbors = nNeighbors, maxDist = maxDist_value)
 
   meta_df <- object[[]] %>%
     rownames_to_column("barcode") %>%
@@ -270,6 +323,10 @@ remove_small_spatial_islands <- function(
 #' @param n_layers Number of neighborhood expansion layers.
 #' @param exclude_original_labeled_spots_from_other_rings Logical; whether to
 #' prevent original labeled spots from being assigned to other regions.
+#' @param maxDist_method Character string specifying how to compute the
+#' distance cut‑off passed to `RegionNeighbors()`.  Either "minimum"
+#' (default; use semla’s minimum nearest neighbour threshold) or
+#' "median" (compute the median nearest neighbour distance × 1.2, not section-wise).
 #'
 #' @return Seurat object with additional region-neighbor metadata columns.
 #'
@@ -281,7 +338,8 @@ make_region_neighbors_overlap_aware <- function(
     object,
     column_name,
     n_layers = 1,
-    exclude_original_labeled_spots_from_other_rings = TRUE
+    exclude_original_labeled_spots_from_other_rings = TRUE,
+    maxDist_method = c("minimum", "median")
 ) {
   if (missing(column_name)) {
     stop("You must provide 'column_name'")
@@ -289,6 +347,12 @@ make_region_neighbors_overlap_aware <- function(
 
   if (!column_name %in% colnames(object@meta.data)) {
     stop(paste0("Column '", column_name, "' not found in metadata"))
+  }
+
+  maxDist_method <- match.arg(maxDist_method)
+  maxDist_value <- NULL
+  if (maxDist_method == "median") {
+    maxDist_value <- calculate_median_maxDist(object)
   }
 
   base_labels <- object[[column_name]][, 1]
@@ -316,7 +380,8 @@ make_region_neighbors_overlap_aware <- function(
         column_name = temp_col,
         column_labels = label,
         mode = "outer",
-        column_key = key
+        column_key = key,
+        maxDist = maxDist_value
       )
 
       md <- object@meta.data

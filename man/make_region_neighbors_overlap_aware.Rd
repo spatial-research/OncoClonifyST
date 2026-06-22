@@ -8,7 +8,8 @@ make_region_neighbors_overlap_aware(
   object,
   column_name,
   n_layers = 1,
-  exclude_original_labeled_spots_from_other_rings = TRUE
+  exclude_original_labeled_spots_from_other_rings = TRUE,
+  maxDist_method = c("minimum", "median")
 )
 }
 \arguments{
@@ -20,6 +21,11 @@ make_region_neighbors_overlap_aware(
 
 \item{exclude_original_labeled_spots_from_other_rings}{Logical; whether to
 prevent original labeled spots from being assigned to other regions.}
+
+\item{maxDist_method}{Character string specifying how to compute the
+distance cut‑off passed to \code{RegionNeighbors()}.  Either "minimum"
+(default; use semla’s minimum nearest neighbour threshold) or
+"median" (compute the median nearest neighbour distance × 1.2, not section-wise).}
 }
 \value{
 Seurat object with additional region-neighbor metadata columns.

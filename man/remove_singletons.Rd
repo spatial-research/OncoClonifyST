@@ -9,6 +9,7 @@ remove_singletons(
   label_col,
   sample_col = "sample_id",
   nNeighbors = 6,
+  maxDist_method = c("minimum", "median"),
   new_col = NULL,
   section_map = NULL
 )
@@ -23,6 +24,12 @@ Defaults to \code{"sample_id"}.}
 
 \item{nNeighbors}{Number of spatial neighbors to use when constructing the
 spatial neighbor graph. Passed to \code{GetSpatialNetwork()}.}
+
+\item{maxDist_method}{Character string specifying how to compute the
+distance cut‐off.  Either "minimum" (use semla’s default based on
+the minimum nearest neighbour distance) or "median" (compute a
+cut‐off from the median nearest neighbour distance, not section wise).  Defaults to
+"minimum".}
 
 \item{new_col}{Name of the metadata column where cleaned labels will be
 stored. If \code{NULL}, defaults to \code{paste0(label_col, "_nosingletons")}.}
