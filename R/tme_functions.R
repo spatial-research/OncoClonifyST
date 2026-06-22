@@ -406,86 +406,139 @@ make_region_neighbors_overlap_aware <- function(
     dimnames = list(colnames(object), labels)
   )
 
-  for (label in labels) {
-    message("Processing label: ", label)
+  if (maxDist_method == "minimum") {
+    for (label in labels) {
+      message("Processing label: ", label)
 
-    for (sid in unique(object@tools$Staffli@meta_data$sampleID)) {
-      cells <- which(object@tools$Staffli@meta_data$sampleID == sid)
-      if (length(cells) == 0)
-        next
+      temp_col <- paste0("tmp_expand_", make.names(label))
 
-      sub_obj <- SubsetSTData(object, spots = colnames(object)[cells])
-
-      sub_obj@tools$Staffli@meta_data$sampleID <- sid
-      sub_obj@tools$Staffli@meta_data$barcode <- sub(
-        "-\\d+$",
-        paste0("-", sid),
-        sub_obj@tools$Staffli@meta_data$barcode
-      )
-
-      temp_col_name <- paste0("tmp_expand_", make.names(label))
-      temp_col <- rep(NA_character_, length(cells))
-      temp_col[base_labels[cells] == label] <- label
-
-      if (!any(temp_col == label, na.rm = TRUE)) {
-        next
-      }
-
-      sub_obj[[temp_col_name]] <- temp_col
-
-      md <- NULL
-      if (maxDist_method == "median") {
-        md <- calculate_median_maxDist(object, sid)
-      }
+      object[[temp_col]] <- ifelse(base_labels == label, label, NA)
 
       for (i in seq_len(n_layers)) {
         key <- paste0("n", i, "_", make.names(label))
 
-        sub_obj <- semla::RegionNeighbors(
-          sub_obj,
-          column_name = temp_col_name,
+        object <- semla::RegionNeighbors(
+          object,
+          column_name = temp_col,
           column_labels = label,
           mode = "outer",
-          column_key = key,
-          maxDist = md
+          column_key = key
         )
 
-        md_data <- sub_obj@meta.data
-        nb_cols <- grep(paste0("^", key), colnames(md_data), value = TRUE)
+        md <- object@meta.data
+
+        nb_cols <- grep(
+          paste0("^", key),
+          colnames(md),
+          value = TRUE
+        )
+
         if (length(nb_cols) == 0) {
           warning("No RegionNeighbors columns found for key: ", key)
           next
         }
-        if (length(nb_cols) > 0) {
+
+        is_neighbor <- rowSums(
+          md[, nb_cols, drop = FALSE] == as.character(label),
+          na.rm = TRUE
+        ) > 0
+
+        not_already_in_this_expansion <- is.na(object[[temp_col]][, 1])
+
+        if (exclude_original_labeled_spots_from_other_rings) {
+          allowed_spot <- is.na(base_labels)
+        } else {
+          allowed_spot <- base_labels != label | is.na(base_labels)
+        }
+
+        new_ring_spots <- is_neighbor &
+          not_already_in_this_expansion &
+          allowed_spot
+
+        ring_mat[new_ring_spots, label] <- i
+
+        object[[temp_col]][new_ring_spots, 1] <- label
+      }
+    }
+  } else {
+    for (label in labels) {
+      message("Processing label: ", label)
+
+      for (sid in unique(object@tools$Staffli@meta_data$sampleID)) {
+        cells <- which(object@tools$Staffli@meta_data$sampleID == sid)
+        if (length(cells) == 0)
+          next
+
+        sub_obj <- semla::SubsetSTData(object, spots = colnames(object)[cells])
+
+        sub_obj@tools$Staffli@meta_data$sampleID <- sid
+        sub_obj@tools$Staffli@meta_data$barcode <- sub(
+          "-\\d+$",
+          paste0("-", sid),
+          sub_obj@tools$Staffli@meta_data$barcode
+        )
+
+        temp_col_name <- paste0("tmp_expand_", make.names(label))
+        temp_col <- rep(NA_character_, length(cells))
+        temp_col[base_labels[cells] == label] <- label
+
+        if (!any(temp_col == label, na.rm = TRUE)) {
+          next
+        }
+
+        sub_obj[[temp_col_name]] <- temp_col
+
+        md <- calculate_median_maxDist(object, sid)
+
+        for (i in seq_len(n_layers)) {
+          key <- paste0("n", i, "_", make.names(label))
+
+          sub_obj <- semla::RegionNeighbors(
+            sub_obj,
+            column_name = temp_col_name,
+            column_labels = label,
+            mode = "outer",
+            column_key = key,
+            maxDist = md
+          )
+
+          md_data <- sub_obj@meta.data
+          nb_cols <- grep(paste0("^", key), colnames(md_data), value = TRUE)
+
+          if (length(nb_cols) == 0) {
+            warning("No RegionNeighbors columns found for key: ", key)
+            next
+          }
+
           sub_obj@meta.data[, nb_cols] <- lapply(
             sub_obj@meta.data[, nb_cols, drop = FALSE],
             function(x) sub("-\\d+$", paste0("-", sid), x)
           )
+
+          md_data <- sub_obj@meta.data
+
+          is_neighbor <- rowSums(
+            md_data[, nb_cols, drop = FALSE] == as.character(label),
+            na.rm = TRUE
+          ) > 0
+
+          not_already <- is.na(sub_obj[[temp_col_name]][, 1])
+
+          if (exclude_original_labeled_spots_from_other_rings) {
+            allowed <- is.na(base_labels[cells])
+          } else {
+            allowed <- base_labels[cells] != label | is.na(base_labels[cells])
+          }
+
+          new_ring <- is_neighbor & not_already & allowed
+
+          if (any(new_ring))
+            ring_mat[cells[new_ring], label] <- i
+
+          tmp <- sub_obj[[temp_col_name]][, 1]
+          tmp[new_ring] <- label
+          sub_obj[[temp_col_name]] <- tmp
         }
-
-        md_data <- sub_obj@meta.data
-
-        is_neighbor <- rowSums(
-          md_data[, nb_cols, drop = FALSE] == as.character(label),
-          na.rm = TRUE
-        ) > 0
-
-        not_already <- is.na(sub_obj[[temp_col_name]][, 1])
-
-        if (exclude_original_labeled_spots_from_other_rings) {
-          allowed <- is.na(base_labels[cells])
-        } else {
-          allowed <- base_labels[cells] != label | is.na(base_labels[cells])
-        }
-
-        new_ring <- is_neighbor & not_already & allowed
-
-        if (any(new_ring))
-          ring_mat[cells[new_ring], label] <- i
-
-        tmp <- sub_obj[[temp_col_name]][, 1]
-        tmp[new_ring] <- label
-        sub_obj[[temp_col_name]] <- tmp
       }
     }
   }
