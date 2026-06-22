@@ -25,7 +25,7 @@ prevent original labeled spots from being assigned to other regions.}
 \item{maxDist_method}{Character string specifying how to compute the
 distance cut‑off passed to \code{RegionNeighbors()}.  Either "minimum"
 (default; use semla’s minimum nearest neighbour threshold) or
-"median" (compute the median nearest neighbour distance × 1.2, not section-wise).}
+"median" (compute the median nearest neighbour distance × 1.2).}
 }
 \value{
 Seurat object with additional region-neighbor metadata columns.

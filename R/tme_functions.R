@@ -18,13 +18,13 @@
 #        `NULL` if `method = "minimum"`.
 # @importFrom semla GetStaffli
 # @importFrom dbscan kNN
-calculate_median_maxDist <- function(object) {
+calculate_median_maxDist <- function(object, sid) {
   st_obj <- semla::GetStaffli(object)
-  coords <- st_obj@meta_data[, c("pxl_col_in_fullres", "pxl_row_in_fullres")]
+  spots <- colnames(object)[object@tools$Staffli@meta_data$sampleID == sid]
+  coords <- st_obj@meta_data[spots, c("pxl_col_in_fullres", "pxl_row_in_fullres")]
   nn_res <- dbscan::kNN(coords, k = 1)
   return(median(nn_res$dist) * 1.2)
 }
-
 
 #' Remove spatial singleton labels
 #'
@@ -42,7 +42,7 @@ calculate_median_maxDist <- function(object) {
 #' @param maxDist_method Character string specifying how to compute the
 #' distance cut‐off.  Either "minimum" (use semla’s default based on
 #' the minimum nearest neighbour distance) or "median" (compute a
-#' cut‐off from the median nearest neighbour distance, not section wise).  Defaults to
+#' cut‐off from the median nearest neighbour distance).  Defaults to
 #' "minimum".
 #' @param new_col Name of the metadata column where cleaned labels will be
 #' stored. If `NULL`, defaults to `paste0(label_col, "_nosingletons")`.
@@ -72,20 +72,34 @@ remove_singletons <- function(
 
   maxDist_method <- match.arg(maxDist_method)
 
-  maxDist_value <- NULL
-  if (maxDist_method == "median") {
-    maxDist_value <- calculate_median_maxDist(object)
-  }
-
   if (is.null(new_col)) {
     new_col <- paste0(label_col, "_nosingletons")
+  }
+
+  if (!sample_col %in% colnames(object@meta.data)) {
+    stop(sprintf(
+      "Column '%s' not found in object metadata. Please supply a valid sample_col.",
+      sample_col
+    ))
   }
 
   if (is.null(section_map)) {
     stop("Please provide a section_map, e.g. c('A1'='-1', 'A2'='-2', ...)")
   }
 
-  spatnet <- GetSpatialNetwork(object, nNeighbors = nNeighbors, maxDist = maxDist_value)
+  if (maxDist_method == "median") {
+    section_ids <- unique(object@tools$Staffli@meta_data$sampleID)
+    spatnet <- setNames(
+      lapply(section_ids, function(sid) {
+        md <- calculate_median_maxDist(object, sid)
+        sub_obj <- subset(object, cells = colnames(object)[object@tools$Staffli@meta_data$sampleID == sid])
+        GetSpatialNetwork(sub_obj, nNeighbors = nNeighbors, maxDist = md)[[1]]
+      }),
+      section_ids
+    )
+  } else {
+    spatnet <- GetSpatialNetwork(object, nNeighbors = nNeighbors)
+  }
 
   meta_df <- object[[]] %>%
     rownames_to_column("barcode") %>%
@@ -174,7 +188,7 @@ remove_singletons <- function(
 #' @param min_island_size Minimum connected island size to retain.
 #' @param maxDist_method Character string specifying how to compute the
 #' distance cut‐off.  Either "minimum" or "median".  Defaults to
-#' "minimum". median is not section-wise.
+#' "minimum".
 #' @param new_col Name of the metadata column where cleaned labels will be
 #' stored. If `NULL`, defaults to `paste0(label_col, "_no_small_islands")`.
 #' @param section_map Named character vector mapping sample IDs to spatial
@@ -202,20 +216,34 @@ remove_small_spatial_islands <- function(
 
   maxDist_method <- match.arg(maxDist_method)
 
-  maxDist_value <- NULL
-  if (maxDist_method == "median") {
-    maxDist_value <- calculate_median_maxDist(object)
-  }
-
   if (is.null(new_col)) {
     new_col <- paste0(label_col, "_no_small_islands")
+  }
+
+  if (!sample_col %in% colnames(object@meta.data)) {
+    stop(sprintf(
+      "Column '%s' not found in object metadata. Please supply a valid sample_col.",
+      sample_col
+    ))
   }
 
   if (is.null(section_map)) {
     stop("Please provide a section_map, e.g. c('A1'='-1', 'A2'='-2', ...)")
   }
 
-  spatnet <- GetSpatialNetwork(object, nNeighbors = nNeighbors, maxDist = maxDist_value)
+  if (maxDist_method == "median") {
+    section_ids <- unique(object@tools$Staffli@meta_data$sampleID)
+    spatnet <- setNames(
+      lapply(section_ids, function(sid) {
+        md <- calculate_median_maxDist(object, sid)
+        sub_obj <- subset(object, cells = colnames(object)[object@tools$Staffli@meta_data$sampleID == sid])
+        GetSpatialNetwork(sub_obj, nNeighbors = nNeighbors, maxDist = md)[[1]]
+      }),
+      section_ids
+    )
+  } else {
+    spatnet <- GetSpatialNetwork(object, nNeighbors = nNeighbors)
+  }
 
   meta_df <- object[[]] %>%
     rownames_to_column("barcode") %>%
@@ -326,7 +354,7 @@ remove_small_spatial_islands <- function(
 #' @param maxDist_method Character string specifying how to compute the
 #' distance cut‑off passed to `RegionNeighbors()`.  Either "minimum"
 #' (default; use semla’s minimum nearest neighbour threshold) or
-#' "median" (compute the median nearest neighbour distance × 1.2, not section-wise).
+#' "median" (compute the median nearest neighbour distance × 1.2).
 #'
 #' @return Seurat object with additional region-neighbor metadata columns.
 #'
@@ -350,10 +378,6 @@ make_region_neighbors_overlap_aware <- function(
   }
 
   maxDist_method <- match.arg(maxDist_method)
-  maxDist_value <- NULL
-  if (maxDist_method == "median") {
-    maxDist_value <- calculate_median_maxDist(object)
-  }
 
   base_labels <- object[[column_name]][, 1]
   labels <- unique(na.omit(base_labels))
@@ -368,55 +392,64 @@ make_region_neighbors_overlap_aware <- function(
   for (label in labels) {
     message("Processing label: ", label)
 
-    temp_col <- paste0("tmp_expand_", make.names(label))
-
-    object[[temp_col]] <- ifelse(base_labels == label, label, NA)
-
-    for (i in seq_len(n_layers)) {
-      key <- paste0("n", i, "_", make.names(label))
-
-      object <- RegionNeighbors(
-        object,
-        column_name = temp_col,
-        column_labels = label,
-        mode = "outer",
-        column_key = key,
-        maxDist = maxDist_value
-      )
-
-      md <- object@meta.data
-
-      nb_cols <- grep(
-        paste0("^", key),
-        colnames(md),
-        value = TRUE
-      )
-
-      if (length(nb_cols) == 0) {
-        warning("No RegionNeighbors columns found for key: ", key)
+    for (sid in unique(object@tools$Staffli@meta_data$sampleID)) {
+      cells <- which(object@tools$Staffli@meta_data$sampleID == sid)
+      if (length(cells) == 0)
         next
+
+      sub_obj <- subset(object, cells = colnames(object)[cells])
+
+      temp_col_name <- paste0("tmp_expand_", make.names(label))
+      temp_col <- rep(NA_character_, length(cells))
+      temp_col[base_labels[cells] == label] <- label
+      sub_obj[[temp_col_name]] <- temp_col
+
+      md <- NULL
+      if (maxDist_method == "median") {
+        md <- calculate_median_maxDist(object, sid)
       }
 
-      is_neighbor <- rowSums(
-        md[, nb_cols, drop = FALSE] == as.character(label),
-        na.rm = TRUE
-      ) > 0
+      for (i in seq_len(n_layers)) {
+        key <- paste0("n", i, "_", make.names(label))
 
-      not_already_in_this_expansion <- is.na(object[[temp_col]][, 1])
+        sub_obj <- semla::RegionNeighbors(
+          sub_obj,
+          column_name = temp_col_name,
+          column_labels = label,
+          mode = "outer",
+          column_key = key,
+          maxDist = md
+        )
 
-      if (exclude_original_labeled_spots_from_other_rings) {
-        allowed_spot <- is.na(base_labels)
-      } else {
-        allowed_spot <- base_labels != label | is.na(base_labels)
+        md_data <- sub_obj@meta.data
+        nb_cols <- grep(paste0("^", key), colnames(md_data), value = TRUE)
+        if (length(nb_cols) == 0) {
+          warning("No RegionNeighbors columns found for key: ", key)
+          next
+        }
+
+        is_neighbor <- rowSums(
+          md_data[, nb_cols, drop = FALSE] == as.character(label),
+          na.rm = TRUE
+        ) > 0
+
+        not_already <- is.na(sub_obj[[temp_col_name]][, 1])
+
+        if (exclude_original_labeled_spots_from_other_rings) {
+          allowed <- is.na(base_labels[cells])
+        } else {
+          allowed <- base_labels[cells] != label | is.na(base_labels[cells])
+        }
+
+        new_ring <- is_neighbor & not_already & allowed
+
+        if (any(new_ring))
+          ring_mat[cells[new_ring], label] <- i
+
+        tmp <- sub_obj[[temp_col_name]][, 1]
+        tmp[new_ring] <- label
+        sub_obj[[temp_col_name]] <- tmp
       }
-
-      new_ring_spots <- is_neighbor &
-        not_already_in_this_expansion &
-        allowed_spot
-
-      ring_mat[new_ring_spots, label] <- i
-
-      object[[temp_col]][new_ring_spots, 1] <- label
     }
   }
 

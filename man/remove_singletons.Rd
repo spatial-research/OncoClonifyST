@@ -28,7 +28,7 @@ spatial neighbor graph. Passed to \code{GetSpatialNetwork()}.}
 \item{maxDist_method}{Character string specifying how to compute the
 distance cut‐off.  Either "minimum" (use semla’s default based on
 the minimum nearest neighbour distance) or "median" (compute a
-cut‐off from the median nearest neighbour distance, not section wise).  Defaults to
+cut‐off from the median nearest neighbour distance).  Defaults to
 "minimum".}
 
 \item{new_col}{Name of the metadata column where cleaned labels will be
