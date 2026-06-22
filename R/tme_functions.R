@@ -22,6 +22,8 @@ calculate_median_maxDist <- function(object, sid) {
   st_obj <- semla::GetStaffli(object)
   spots <- colnames(object)[object@tools$Staffli@meta_data$sampleID == sid]
   coords <- st_obj@meta_data[spots, c("pxl_col_in_fullres", "pxl_row_in_fullres")]
+  coords <- coords[complete.cases(coords), , drop = FALSE]
+  if (nrow(coords) < 2) return(NULL)
   nn_res <- dbscan::kNN(coords, k = 1)
   return(median(nn_res$dist) * 1.2)
 }
